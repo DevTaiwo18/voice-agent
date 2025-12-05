@@ -1,14 +1,22 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import multer from "multer";
 import fs from "fs";
 import path from "path";
 import { execFile } from "child_process";
 import { fileURLToPath } from "url";
 
+import connectDB from "./config/db.js";
+import authRoutes from "./routes/auth.js";
+import sessionRoutes from "./routes/sessions.js";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Connect to MongoDB
+connectDB();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -17,9 +25,30 @@ const UPLOAD_DIR = path.join(__dirname, "uploads");
 
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
-app.use(cors());
-app.use(express.json());
+// CORS configuration for multiple environments
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  process.env.CLIENT_URL,
+].filter(Boolean);
 
+app.use(cors({
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps or Postman)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Allow all origins for now during development
+    }
+  },
+  credentials: true,
+}));
+app.use(express.json());
+app.use(cookieParser());
+
+// Request logging
 app.use((req, res, next) => {
   const timestamp = new Date().toISOString();
   console.log(`[${timestamp}] ${req.method} ${req.url}`);
@@ -43,6 +72,11 @@ function cleanupFile(filepath) {
   } catch {}
 }
 
+// API Routes
+app.use("/api/auth", authRoutes);
+app.use("/api/sessions", sessionRoutes);
+
+// OpenAI Realtime Session
 app.post("/session", async (req, res) => {
   try {
     if (!OPENAI_API_KEY) {
@@ -78,6 +112,7 @@ app.post("/session", async (req, res) => {
   }
 });
 
+// Audio conversion endpoint
 app.post("/convert", upload.array("files"), async (req, res) => {
   try {
     if (!req.files?.length) {
@@ -118,6 +153,7 @@ app.post("/convert", upload.array("files"), async (req, res) => {
   }
 });
 
+// Health check
 app.get("/health", (req, res) => {
   res.json({
     status: "ok",

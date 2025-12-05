@@ -1,9 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
-const API_BASE_URL = import.meta.env.PROD
-  ? "https://mixcoach-api.onrender.com"
-  : "";
+const API_BASE_URL = "https://mixcoach-api.onrender.com";
 
 const COACH_CONSTITUTION = `
 You are my real-time mixing coach. Be natural, conversational, and helpful—like a great engineer in the room.
